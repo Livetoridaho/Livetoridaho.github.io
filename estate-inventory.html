@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#18160F">
+<title>Estate Inventory</title>
+<style>
+  :root{
+    --bg:#18160F; --card:#23201A; --border:#35301F;
+    --accent:#C8A060; --accentDim:#7A5E30;
+    --text:#F0E8D8; --muted:#7A7060;
+    --danger:#8B3A2A; --dangerBright:#D9534F;
+    --green:#5CB85C; --blue:#5A8FB0;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:Georgia,'Times New Roman',serif;}
+  body{padding-bottom:78px;min-height:100vh;}
+  input,textarea,select,button{font-family:inherit;}
+  button{cursor:pointer;}
+  .hd{background:var(--card);border-bottom:1px solid var(--border);padding:18px 16px 14px;}
+  .hd-title{font-size:20px;color:var(--accent);letter-spacing:.07em;font-variant:small-caps;}
+  .hd-sub{font-size:12px;color:var(--muted);margin-top:3px;}
+  .wrap{padding:12px 16px;}
+  .row{display:flex;gap:8px;}
+  .inp{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;
+    color:var(--text);font-size:16px;padding:12px 14px;outline:none;}
+  .inp-card{background:var(--card);}
+  .btn{background:var(--accent);border:none;color:var(--bg);border-radius:8px;
+    padding:13px 16px;font-size:15px;font-weight:bold;}
+  .btn[disabled]{background:var(--accentDim);opacity:.7;}
+  .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);}
+  .btn-accent-ghost{background:transparent;border:1px solid var(--accent);color:var(--accent);}
+  .btn-danger-ghost{background:transparent;border:1px solid var(--danger);color:var(--danger);}
+  .lbl{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+  .field{margin-bottom:14px;}
+  .tote{display:flex;justify-content:space-between;align-items:center;width:100%;
+    background:var(--card);border:1px solid var(--border);border-radius:10px;
+    padding:16px;margin-bottom:8px;color:var(--text);text-align:left;}
+  .tote .id{font-size:17px;color:var(--accent);letter-spacing:.05em;}
+  .tote .meta{font-size:12px;color:var(--muted);margin-top:3px;}
+  .pill{border-radius:20px;padding:3px 12px;font-size:12px;flex-shrink:0;
+    background:var(--bg);border:1px solid var(--border);color:var(--muted);}
+  .pill.raw{border-color:var(--blue);color:var(--blue);}
+  .pill.parsed{border-color:var(--green);color:var(--green);}
+  .item{background:var(--card);border:1px solid var(--border);border-radius:10px;
+    padding:14px;margin-bottom:8px;}
+  .x{background:transparent;border:none;color:var(--muted);font-size:22px;padding:0 2px;line-height:1;flex-shrink:0;}
+  .sub-lbl{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+  .tabbar{position:fixed;bottom:0;left:0;right:0;background:var(--card);
+    border-top:1px solid var(--border);display:flex;z-index:100;
+    padding-bottom:env(safe-area-inset-bottom);}
+  .tab{flex:1;background:transparent;border:none;color:var(--muted);
+    padding:12px 0 14px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;position:relative;}
+  .tab.active{color:var(--accent);}
+  .tab .icon{font-size:20px;margin-bottom:2px;}
+  .badge{position:absolute;top:8px;right:calc(50% - 22px);background:var(--accent);
+    color:var(--bg);border-radius:10px;font-size:9px;font-weight:bold;padding:1px 5px;}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;}
+  .modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:201;
+    background:var(--card);border:1px solid var(--border);border-radius:14px;
+    padding:22px 20px;width:min(380px,92vw);max-height:88vh;overflow-y:auto;
+    box-shadow:0 8px 40px rgba(0,0,0,.6);}
+  .empty{text-align:center;color:var(--muted);margin-top:48px;font-size:14px;line-height:2;}
+  .note{font-size:12px;color:var(--muted);line-height:1.7;}
+  .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);
+    background:var(--accent);color:var(--bg);padding:10px 20px;border-radius:24px;
+    font-size:13px;font-weight:bold;z-index:400;box-shadow:0 4px 20px rgba(0,0,0,.4);
+    opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;text-align:center;}
+  .toast.show{opacity:1;}
+  .syncdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;}
+  .sync-ok{background:var(--green);} .sync-off{background:var(--muted);}
+  .sync-busy{background:var(--accent);} .sync-err{background:var(--dangerBright);}
+  a.dl{display:none;}
+  code{background:var(--bg);padding:1px 5px;border-radius:4px;font-size:12px;color:var(--accent);}
+  ol{padding-left:20px;font-size:13px;line-height:1.9;color:var(--text);}
+  ol code{font-size:12px;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="toast" class="toast"></div>
+<a id="dl" class="dl"></a>
+
+<script>
+/* ============================================================================
+   ESTATE INVENTORY  — standalone, offline-capable, Google Sheets auto-sync
+   Workflow: create tote -> pour raw speech into "contents" -> parse later
+   Parser: offline, splits on the spoken word "next" (also newline / "then")
+   ============================================================================ */
+
+/* ---------- on-device cache (instant load + offline) ---------- */
+const DB_NAME="estate_inv_db",STORE="kv",KEY="state",LS_KEY="estate_inv_state";
+let _db=null;
+function openDB(){return new Promise(r=>{try{const q=indexedDB.open(DB_NAME,1);
+  q.onupgradeneeded=()=>q.result.createObjectStore(STORE);
+  q.onsuccess=()=>{_db=q.result;r(_db);};q.onerror=()=>r(null);}catch(e){r(null);}});}
+function idbGet(k){return new Promise(r=>{if(!_db)return r(null);try{
+  const t=_db.transaction(STORE,"readonly").objectStore(STORE).get(k);
+  t.onsuccess=()=>r(t.result??null);t.onerror=()=>r(null);}catch(e){r(null);}});}
+function idbSet(k,v){return new Promise(r=>{if(!_db)return r(false);try{
+  const t=_db.transaction(STORE,"readwrite").objectStore(STORE).put(v,k);
+  t.onsuccess=()=>r(true);t.onerror=()=>r(false);}catch(e){r(false);}});}
+function lsGet(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true;}catch(e){return false;}}
+async function cacheSave(o){await idbSet(KEY,o);lsSet(LS_KEY,o);}
+async function cacheLoad(){let s=await idbGet(KEY);if(!s)s=lsGet(LS_KEY);return s||null;}
+function cfgGet(){return lsGet("estate_inv_cfg")||{clientId:"",sheetId:""};}
+function cfgSet(c){lsSet("estate_inv_cfg",c);}
+
+/* ---------- CSV / rows ---------- */
+const CONDITIONS=["","Excellent","Good","Fair","Poor","Unknown"];
+function totesToCSV(totes){
+  const rows=[["Tote ID","Location","Category","Notes","Raw Contents","Item","Qty","Condition"]];
+  totes.forEach(t=>{
+    if(!t.items.length) rows.push([t.id,t.location,t.category,t.notes,t.raw||"","(unparsed)","",""]);
+    else t.items.forEach((it,i)=>rows.push([t.id,t.location,t.category,
+      i===0?t.notes:"", i===0?(t.raw||""):"", it.name,it.qty,it.condition]));
+  });
+  return rows.map(r=>r.map(c=>`"${String(c??"").replace(/"/g,'""')}"`).join(",")).join("\n");
+}
+function rowsToTotes(rows){
+  if(!rows||rows.length<2)return [];
+  const map=new Map();
+  for(let i=1;i<rows.length;i++){
+    const [id,location,category,notes,raw,item,qty,condition]=rows[i];
+    if(!id||!String(id).trim())continue;
+    if(!map.has(id))map.set(id,{id,location:location||"",category:category||"",notes:notes||"",raw:raw||"",items:[]});
+    const t=map.get(id);
+    if(notes&&!t.notes)t.notes=notes;
+    if(raw&&!t.raw)t.raw=raw;
+    if(item&&item!=="(unparsed)")t.items.push({name:item,qty:qty||"1",condition:condition||""});
+  }
+  return [...map.values()];
+}
+function csvToRows(text){
+  const rows=[];let cur="",row=[],q=false;
+  for(let i=0;i<text.length;i++){const ch=text[i];
+    if(ch==='"'){if(q&&text[i+1]==='"'){cur+='"';i++;}else q=!q;}
+    else if(ch===','&&!q){row.push(cur);cur="";}
+    else if((ch==='\n'||ch==='\r')&&!q){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(cur);rows.push(row);row=[];cur="";}
+    else cur+=ch;}
+  if(cur.length||row.length){row.push(cur);rows.push(row);}
+  return rows;
+}
+
+/* ---------- OFFLINE PARSER: split raw pour on "next" ---------- */
+const NUM_WORDS={one:"1",two:"2",three:"3",four:"4",five:"5",six:"6",seven:"7",
+  eight:"8",nine:"9",ten:"10",eleven:"11",twelve:"12",a:"1",an:"1",pair:"2",couple:"2",dozen:"12"};
+function parseRaw(raw){
+  if(!raw||!raw.trim())return [];
+  let txt=" "+raw.toLowerCase()+" ";
+  txt=txt.replace(/\bnext\b/g,"|").replace(/\bthen\b/g,"|").replace(/[\n\r;]+/g,"|");
+  const chunks=txt.split("|").map(s=>s.trim()).filter(Boolean);
+  const items=[];
+  for(let chunk of chunks){
+    chunk=chunk.replace(/^[\s,.-]+|[\s,.-]+$/g,"");
+    if(!chunk)continue;
+    let qty="1",condition="";
+    const cm=chunk.match(/\b(excellent|good|fair|poor|unknown)\b(\s+condition)?\s*$/);
+    if(cm){condition=cm[1][0].toUpperCase()+cm[1].slice(1);chunk=chunk.slice(0,cm.index).trim();}
+    chunk=chunk.replace(/^(of\s+|a\s+set\s+of\s+|set\s+of\s+)/,"");
+    const dm=chunk.match(/^(\d+)\s+(.*)$/);
+    if(dm){qty=dm[1];chunk=dm[2];}
+    else{const w=chunk.split(/\s+/)[0];
+      if(NUM_WORDS[w]!==undefined){qty=NUM_WORDS[w];chunk=chunk.split(/\s+/).slice(1).join(" ");}}
+    chunk=chunk.replace(/^[\s,.-]+|[\s,.-]+$/g,"");
+    if(!chunk)continue;
+    items.push({name:chunk.replace(/\b\w/g,c=>c.toUpperCase()),qty,condition});
+  }
+  return items;
+}
+
+/* ============================================================================
+   GOOGLE SHEETS SYNC  (GIS token client + REST)
+   ============================================================================ */
+const SHEET_TAB="Inventory";
+let _token=null,_tokenClient=null,_gisLoaded=false;
+let syncState="off";
+function loadGIS(){return new Promise(res=>{
+  if(_gisLoaded)return res(true);
+  const s=document.createElement("script");
+  s.src="https://accounts.google.com/gsi/client";
+  s.onload=()=>{_gisLoaded=true;res(true);};
+  s.onerror=()=>res(false);
+  document.head.appendChild(s);});}
+async function ensureToken(interactive){
+  const cfg=cfgGet();
+  if(!cfg.clientId)throw new Error("No client ID configured");
+  const ok=await loadGIS();
+  if(!ok||!window.google)throw new Error("Could not load Google sign-in (offline?)");
+  if(_token)return _token;
+  return new Promise((resolve,reject)=>{
+    _tokenClient=google.accounts.oauth2.initTokenClient({
+      client_id:cfg.clientId,
+      scope:"https://www.googleapis.com/auth/spreadsheets",
+      callback:r=>{if(r&&r.access_token){_token=r.access_token;resolve(_token);}else reject(new Error("Sign-in failed"));}});
+    _tokenClient.requestAccessToken({prompt:interactive?"consent":""});});}
+async function gfetch(url,opts){
+  const r=await fetch(url,{...opts,headers:{...(opts&&opts.headers),Authorization:"Bearer "+_token}});
+  if(r.status===401){_token=null;throw new Error("auth");}
+  if(!r.ok)throw new Error("Sheets API "+r.status);
+  return r.json();}
+async function ensureTab(id){
+  const m=await gfetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}`);
+  if(!(m.sheets||[]).some(s=>s.properties.title===SHEET_TAB))
+    await gfetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`,
+      {method:"POST",headers:{"Content-Type":"application/json"},
+       body:JSON.stringify({requests:[{addSheet:{properties:{title:SHEET_TAB}}}]})});}
+async function pullSheet(){
+  const cfg=cfgGet();if(!cfg.sheetId)throw new Error("No sheet configured");
+  await ensureToken(false);await ensureTab(cfg.sheetId);
+  const d=await gfetch(`https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values/${SHEET_TAB}!A1:H100000`);
+  return rowsToTotes(d.values||[]);}
+async function pushSheet(totes){
+  const cfg=cfgGet();if(!cfg.sheetId)throw new Error("No sheet configured");
+  await ensureToken(false);await ensureTab(cfg.sheetId);
+  const rows=csvToRows(totesToCSV(totes));
+  await gfetch(`https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values/${SHEET_TAB}!A1:H100000:clear`,{method:"POST"});
+  await gfetch(`https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values/${SHEET_TAB}!A1?valueInputOption=RAW`,
+    {method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({values:rows})});}
+
+/* ============================================================================
+   STATE
+   ============================================================================ */
+let state={ready:false,totes:[],screen:"list",selectedId:null,searchQ:"",modal:null};
+let saveTimer=null,syncTimer=null;
+
+async function init(){
+  await openDB();
+  const c=await cacheLoad();
+  if(c&&Array.isArray(c.totes))state.totes=c.totes;
+  state.ready=true;render();
+  const cfg=cfgGet();
+  if(cfg.clientId&&cfg.sheetId&&navigator.onLine){
+    try{
+      syncState="busy";render();
+      await ensureToken(false).catch(()=>{throw new Error("need-signin");});
+      const remote=await pullSheet();
+      if(remote.length)state.totes=remote;
+      syncState="ok";await cacheSave({totes:state.totes});render();
+      toast("Synced from Google Sheet");
+    }catch(e){syncState=e.message==="need-signin"?"off":"err";render();}
+  }
+  setInterval(()=>{if(cfgGet().sheetId&&navigator.onLine)doSync(true);},60000);
+  if(state.totes.length)toast(`${state.totes.length} tote${state.totes.length!==1?"s":""} loaded`);
+}
+function commit(opts={}){
+  render();clearTimeout(saveTimer);
+  saveTimer=setTimeout(async()=>{
+    await cacheSave({totes:state.totes});
+    if(opts.silent!==true)toast("Saved on device");
+    render();
+    clearTimeout(syncTimer);
+    syncTimer=setTimeout(()=>doSync(true),1500);
+  },opts.now?0:1000);
+}
+async function doSync(silent){
+  const cfg=cfgGet();
+  if(!cfg.clientId||!cfg.sheetId){if(!silent)toast("Set up Google sync first");return;}
+  if(!navigator.onLine){if(!silent)toast("Offline — will sync later");return;}
+  try{
+    syncState="busy";render();
+    await ensureToken(!silent);
+    await pushSheet(state.totes);
+    syncState="ok";render();
+    if(!silent)toast("Synced to Google Sheet");
+  }catch(e){syncState="err";render();
+    if(!silent)toast(e.message==="auth"?"Sign-in expired — tap Sync again":"Sync failed: "+e.message);}
+}
+async function manualPull(){
+  const cfg=cfgGet();
+  if(!cfg.clientId||!cfg.sheetId){toast("Set up Google sync first");return;}
+  try{
+    syncState="busy";render();
+    await ensureToken(true);
+    const remote=await pullSheet();
+    state.totes=remote;
+    syncState="ok";await cacheSave({totes:state.totes});render();
+    toast(`Pulled ${remote.length} tote${remote.length!==1?"s":""} from Sheet`);
+  }catch(e){syncState="err";render();toast("Pull failed: "+e.message);}
+}
+
+/* ---------- mutations ---------- */
+function genId(){return "T-"+String(Math.floor(Math.random()*9000)+1000);}
+function addTote(raw){
+  const id=(raw||"").trim()||genId();
+  if(state.totes.some(t=>t.id===id)){toast("That ID already exists");return;}
+  state.totes.push({id,location:"",category:"",notes:"",raw:"",items:[]});
+  state.selectedId=id;state.screen="detail";commit();
+}
+function curTote(){return state.totes.find(t=>t.id===state.selectedId);}
+function updTote(ch){const t=curTote();if(t){Object.assign(t,ch);commit({silent:true});}}
+function renameTote(nv){nv=nv.trim();const t=curTote();
+  if(!t||!nv||nv===t.id)return false;
+  if(state.totes.some(x=>x.id===nv))return false;
+  t.id=nv;state.selectedId=nv;commit();return true;}
+function delTote(){state.totes=state.totes.filter(t=>t.id!==state.selectedId);
+  state.screen="list";state.selectedId=null;commit();}
+function parseTote(id){const t=state.totes.find(x=>x.id===id);if(!t)return 0;
+  t.items=parseRaw(t.raw);commit();return t.items.length;}
+function parseAll(){let n=0;state.totes.forEach(t=>{if(t.raw&&t.raw.trim()){t.items=parseRaw(t.raw);n++;}});
+  commit();toast(`Parsed ${n} tote${n!==1?"s":""}`);}
+function updItem(i,ch){const t=curTote();if(t&&t.items[i]){Object.assign(t.items[i],ch);commit({silent:true});}}
+function delItem(i){const t=curTote();if(t){t.items.splice(i,1);commit({silent:true});}}
+function addItemBlank(){const t=curTote();if(t){t.items.push({name:"New item",qty:"1",condition:""});commit({silent:true});}}
+function exportCSV(){
+  if(!state.totes.length){toast("Nothing to export");return;}
+  const a=document.getElementById("dl");
+  a.href=URL.createObjectURL(new Blob([totesToCSV(state.totes)],{type:"text/csv"}));
+  a.download=`estate-inventory-${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.csv`;
+  a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  toast("CSV exported");
+}
+
+/* ============================================================================
+   RENDER
+   ============================================================================ */
+const root=document.getElementById("root");
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function syncLabel(){return {off:["sync-off","Cloud sync off"],ok:["sync-ok","Synced"],
+  busy:["sync-busy","Syncing…"],err:["sync-err","Sync error"]}[syncState];}
+function render(){
+  if(!state.ready){root.innerHTML=`<div class="empty" style="margin-top:40vh">Loading…</div>`;return;}
+  let h="";
+  if(state.screen==="detail"&&curTote())h=viewDetail();
+  else if(state.screen==="search")h=viewSearch();
+  else if(state.screen==="sync")h=viewSync();
+  else h=viewList();
+  h+=tabbar();
+  if(state.modal)h+=renderModal();
+  root.innerHTML=h;
+}
+function tabbar(){
+  const unparsed=state.totes.filter(t=>t.raw&&t.raw.trim()&&!t.items.length).length;
+  const tabs=[{id:"list",label:"Totes",icon:"⬡"},{id:"search",label:"Search",icon:"⌕"},
+    {id:"sync",label:"Sync",icon:"☁",badge:unparsed||null}];
+  return `<div class="tabbar">`+tabs.map(t=>{
+    const a=(state.screen===t.id||(state.screen==="detail"&&t.id==="list"))?"active":"";
+    return `<button class="tab ${a}" data-act="tab" data-tab="${t.id}">
+      <div class="icon">${t.icon}</div>${t.label}
+      ${t.badge?`<span class="badge">${t.badge}</span>`:""}</button>`;}).join("")+`</div>`;
+}
+function viewList(){
+  const total=state.totes.reduce((s,t)=>s+t.items.length,0);
+  const [dot,txt]=syncLabel();
+  const list=state.totes.length?state.totes.map(t=>{
+    const hasRaw=t.raw&&t.raw.trim();
+    const pill=t.items.length?`<div class="pill parsed">${t.items.length} parsed</div>`
+      :hasRaw?`<div class="pill raw">raw — tap to parse</div>`:`<div class="pill">empty</div>`;
+    return `<button class="tote" data-act="open" data-id="${esc(t.id)}">
+      <div><div class="id">${esc(t.id)}</div>
+      ${(t.location||t.category)?`<div class="meta">${esc([t.location,t.category].filter(Boolean).join(" · "))}</div>`:""}</div>
+      ${pill}</button>`;}).join("")
+    :`<div class="empty"><div style="font-size:32px;opacity:.3;margin-bottom:8px">⬡</div>Add your first tote above</div>`;
+  return `
+  <div class="hd"><div class="hd-title">Estate Inventory</div>
+    <div class="hd-sub"><span class="syncdot ${dot}"></span>${state.totes.length} tote${state.totes.length!==1?"s":""} · ${total} item${total!==1?"s":""} · ${txt}</div></div>
+  <div class="wrap" style="border-bottom:1px solid var(--border)">
+    <div class="row"><input id="newId" class="inp inp-card" placeholder="Tote ID (blank = auto)"/>
+      <button class="btn" style="width:50px;font-size:24px" data-act="addTote">+</button></div></div>
+  <div class="wrap">${list}</div>`;
+}
+function viewDetail(){
+  const t=curTote();
+  const items=t.items.map((it,i)=>`
+    <div class="item">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <input class="inp" style="background:transparent;border:none;padding:0;font-size:16px"
+          data-act="itemName" data-i="${i}" value="${esc(it.name)}"/>
+        <button class="x" data-act="delItem" data-i="${i}">×</button></div>
+      <div class="row" style="margin-top:10px">
+        <div style="flex:1"><div class="sub-lbl">Qty</div>
+          <input class="inp" inputmode="numeric" data-act="itemQty" data-i="${i}" value="${esc(it.qty)}"/></div>
+        <div style="flex:2"><div class="sub-lbl">Condition</div>
+          <select class="inp" data-act="itemCond" data-i="${i}">
+            ${CONDITIONS.map(c=>`<option value="${c}" ${c===it.condition?"selected":""}>${c||"Select…"}</option>`).join("")}
+          </select></div></div></div>`).join("");
+  const hasRaw=t.raw&&t.raw.trim();
+  return `
+  <div class="hd" style="display:flex;align-items:center;justify-content:space-between;padding:16px">
+    <div style="display:flex;align-items:center">
+      <button style="background:transparent;border:none;color:var(--accent);font-size:24px;margin-right:12px" data-act="back">‹</button>
+      <div class="hd-title">${esc(t.id)}</div></div>
+    <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;font-weight:normal" data-act="openRename">✎ Rename</button>
+  </div>
+  <div class="wrap" style="padding-bottom:0">
+    <div class="field"><div class="lbl">Location</div>
+      <input class="inp" data-act="loc" value="${esc(t.location)}" placeholder="e.g. Garage Unit B"/></div>
+    <div class="field"><div class="lbl">Category</div>
+      <input class="inp" data-act="cat" value="${esc(t.category)}" placeholder="e.g. Kitchen, Books"/></div>
+  </div>
+  <div style="margin:4px 16px 16px;border-top:1px solid var(--border)"></div>
+  <div class="wrap" style="padding-top:0">
+    <div class="lbl">Raw Contents — dictate everything, say “next” between items</div>
+    <textarea class="inp" style="min-height:120px;line-height:1.6" data-act="raw"
+      placeholder="Tap the keyboard mic and talk:&#10;three picture frames good condition next box of books next old brass lamp fair next ...">${esc(t.raw||"")}</textarea>
+    <div class="note" style="margin:8px 0 12px">Pour it all in now — parse later, here or on your computer. Raw text is always kept.</div>
+    <button class="btn" style="width:100%;margin-bottom:8px" data-act="parseThis">⚙ Parse This Tote${hasRaw?"":" (no raw text yet)"}</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 10px">
+      <div class="lbl" style="margin:0">Parsed Items · ${t.items.length}</div>
+      <button class="btn btn-ghost" style="padding:7px 12px;font-size:12px" data-act="addItemBlank">+ Add manually</button></div>
+    ${t.items.length?items:`<div class="empty" style="margin-top:0;padding:22px 0;font-size:13px">No parsed items yet</div>`}
+    <div class="field" style="margin-top:16px"><div class="lbl">Tote Notes</div>
+      <textarea class="inp" style="min-height:64px" data-act="notes" placeholder="General notes…">${esc(t.notes)}</textarea></div>
+    <button class="btn btn-danger-ghost" style="width:100%;margin-top:8px" data-act="delTote">Remove This Tote</button>
+  </div>`;
+}
+function viewSearch(){
+  const q=state.searchQ.trim().toLowerCase();let out=[];
+  if(q)state.totes.forEach(t=>{
+    const tm=t.id.toLowerCase().includes(q)||(t.location||"").toLowerCase().includes(q)||(t.category||"").toLowerCase().includes(q);
+    let hit=false;
+    t.items.forEach(it=>{if(it.name.toLowerCase().includes(q)||tm){out.push({t,it});hit=true;}});
+    if(!hit&&tm)out.push({t,it:null});});
+  const res=!q?`<div class="empty">Type to search across all totes</div>`
+    :(out.length?out.map(r=>`
+      <button class="tote" style="flex-direction:column;align-items:flex-start" data-act="open" data-id="${esc(r.t.id)}">
+        <div style="font-size:11px;color:var(--accent);letter-spacing:.12em;text-transform:uppercase;margin-bottom:5px">
+          ${esc(r.t.id)}${r.t.location?" · "+esc(r.t.location):""}</div>
+        ${r.it?`<div style="font-size:15px">${esc(r.it.name)}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px">Qty: ${esc(r.it.qty||1)}${r.it.condition?" · "+esc(r.it.condition):""}</div>`
+          :`<div style="font-size:13px;color:var(--muted)">Matched tote (no parsed items)</div>`}
+      </button>`).join("")
+    :`<div class="empty">No matches found</div>`);
+  return `<div class="hd"><div class="lbl" style="margin-bottom:8px">Search</div>
+    <input id="searchBox" class="inp" placeholder="Items, locations, categories…" value="${esc(state.searchQ)}"/></div>
+    <div class="wrap">${res}</div>`;
+}
+function viewSync(){
+  const cfg=cfgGet();const [dot,txt]=syncLabel();
+  const configured=cfg.clientId&&cfg.sheetId;
+  const unparsed=state.totes.filter(t=>t.raw&&t.raw.trim()&&!t.items.length).length;
+  return `
+  <div class="hd"><div class="hd-title">Cloud Sync</div>
+    <div class="hd-sub"><span class="syncdot ${dot}"></span>${txt}</div></div>
+  <div class="wrap">
+    ${unparsed?`<div class="item" style="border-color:var(--blue)">
+      <div style="color:var(--blue);font-size:13px">${unparsed} tote${unparsed!==1?"s have":" has"} raw text waiting to be parsed.</div>
+      <button class="btn" style="width:100%;margin-top:10px" data-act="parseAll">⚙ Parse All Unparsed Totes</button></div>`:""}
+    <div class="lbl" style="margin:8px 0 6px">Status &amp; Actions</div>
+    <button class="btn" style="width:100%;margin-bottom:8px" data-act="syncNow" ${configured?"":"disabled"}>☁ Sync Now (push to Sheet)</button>
+    <button class="btn btn-accent-ghost" style="width:100%;margin-bottom:8px" data-act="pullNow" ${configured?"":"disabled"}>↓ Pull Latest From Sheet</button>
+    <button class="btn btn-ghost" style="width:100%;margin-bottom:18px" data-act="exportCSV">Export CSV Backup</button>
+    <div class="lbl" style="margin-bottom:6px">Google Sheet Connection</div>
+    <div class="field"><div class="sub-lbl">OAuth Client ID</div>
+      <input class="inp" id="cfgClient" value="${esc(cfg.clientId)}" placeholder="xxxxx.apps.googleusercontent.com"/></div>
+    <div class="field"><div class="sub-lbl">Spreadsheet ID</div>
+      <input class="inp" id="cfgSheet" value="${esc(cfg.sheetId)}" placeholder="from the Sheet URL between /d/ and /edit"/></div>
+    <button class="btn" style="width:100%;margin-bottom:6px" data-act="saveCfg">Save Connection</button>
+    <button class="btn btn-ghost" style="width:100%" data-act="openSetup">How do I get these? (one-time setup)</button>
+    <div class="note" style="margin-top:18px">
+      Your inventory lives in <em>your</em> Google Sheet, on your account. It auto-syncs after edits and every minute while online,
+      and works offline — changes sync when you reconnect. Open this same file on any phone or Windows PC, sign in with the
+      same Google account, Pull, and everything is there.
+    </div>
+  </div>`;
+}
+function renderModal(){
+  const m=state.modal;
+  if(m.type==="rename"){const t=curTote();
+    return `<div class="overlay" data-act="closeModal"></div><div class="modal">
+      <div style="font-size:13px;color:var(--accent);letter-spacing:.08em;margin-bottom:14px">Rename Tote</div>
+      <input id="renameInp" class="inp" style="font-size:18px;margin-bottom:6px" value="${esc(t.id)}"/>
+      <div id="renameErr" style="color:var(--dangerBright);font-size:12px;min-height:16px;margin-bottom:8px"></div>
+      <div class="row"><button class="btn" style="flex:1" data-act="doRename">Rename</button>
+        <button class="btn btn-ghost" data-act="closeModal">Cancel</button></div></div>`;}
+  if(m.type==="setup"){
+    return `<div class="overlay" data-act="closeModal"></div><div class="modal">
+      <div style="font-size:14px;color:var(--accent);letter-spacing:.06em;margin-bottom:12px">One-Time Google Setup</div>
+      <div class="note" style="margin-bottom:10px"><b>A. Make the Sheet</b></div>
+      <ol><li>Go to <code>sheets.google.com</code>, create a blank sheet.</li>
+        <li>Copy its ID from the URL — between <code>/d/</code> and <code>/edit</code> — paste into <b>Spreadsheet ID</b>.</li></ol>
+      <div class="note" style="margin:14px 0 10px"><b>B. Make the OAuth Client ID</b></div>
+      <ol>
+        <li>Open <code>console.cloud.google.com</code>, create a project.</li>
+        <li>APIs &amp; Services → Library → enable <b>Google Sheets API</b>.</li>
+        <li>OAuth consent screen → External → fill required fields → add yourself as a Test user.</li>
+        <li>Credentials → Create Credentials → <b>OAuth client ID</b> → <b>Web application</b>.</li>
+        <li>Add the address this file is served from under <b>Authorized JavaScript origins</b>. Opening the file directly gives a <code>null</code> origin that Google blocks — host it free (GitHub Pages) or via a local server. Ask me for hosting steps.</li>
+        <li>Copy the <b>Client ID</b> → paste it → Save Connection.</li>
+      </ol>
+      <div class="note" style="margin-top:12px">This one-time setup is the unavoidable cost of true cross-device sync on your own account.</div>
+      <button class="btn" style="width:100%;margin-top:14px" data-act="closeModal">Got it</button></div>`;}
+  return "";
+}
+
+/* ============================================================================
+   EVENTS
+   ============================================================================ */
+root.addEventListener("click",e=>{
+  const el=e.target.closest("[data-act]");if(!el)return;
+  const a=el.dataset.act;
+  if(a==="tab"){state.screen=el.dataset.tab;render();}
+  else if(a==="open"){state.selectedId=el.dataset.id;state.screen="detail";render();}
+  else if(a==="back"){state.screen="list";render();}
+  else if(a==="addTote"){addTote(document.getElementById("newId").value);}
+  else if(a==="delTote"){if(confirm("Remove this tote?"))delTote();}
+  else if(a==="delItem"){delItem(+el.dataset.i);}
+  else if(a==="addItemBlank"){addItemBlank();}
+  else if(a==="parseThis"){const t=curTote();const n=parseTote(t.id);toast(n?`Parsed ${n} item${n!==1?"s":""}`:"No items found in raw text");}
+  else if(a==="parseAll"){parseAll();}
+  else if(a==="openRename"){state.modal={type:"rename"};render();setTimeout(()=>document.getElementById("renameInp")?.focus(),60);}
+  else if(a==="doRename"){const v=document.getElementById("renameInp").value;
+    if(renameTote(v)){state.modal=null;render();toast("Renamed");}
+    else document.getElementById("renameErr").textContent="Empty, unchanged, or ID already exists.";}
+  else if(a==="openSetup"){state.modal={type:"setup"};render();}
+  else if(a==="closeModal"){state.modal=null;render();}
+  else if(a==="saveCfg"){cfgSet({clientId:document.getElementById("cfgClient").value.trim(),
+    sheetId:document.getElementById("cfgSheet").value.trim()});_token=null;toast("Connection saved");render();}
+  else if(a==="syncNow"){doSync(false);}
+  else if(a==="pullNow"){if(confirm("Replace local data with the Sheet's contents?"))manualPull();}
+  else if(a==="exportCSV"){exportCSV();}
+});
+root.addEventListener("input",e=>{
+  const el=e.target.closest("[data-act]");if(!el)return;
+  const a=el.dataset.act,i=+el.dataset.i;
+  if(a==="loc")updTote({location:el.value});
+  else if(a==="cat")updTote({category:el.value});
+  else if(a==="notes")updTote({notes:el.value});
+  else if(a==="raw")updTote({raw:el.value});
+  else if(a==="itemName")updItem(i,{name:el.value});
+  else if(a==="itemQty")updItem(i,{qty:el.value});
+  else if(a==="searchBox"){state.searchQ=el.value;
+    const b=document.getElementById("searchBox"),p=b.selectionStart;render();
+    const n=document.getElementById("searchBox");if(n){n.focus();try{n.setSelectionRange(p,p);}catch(_){}}}
+});
+root.addEventListener("change",e=>{
+  const el=e.target.closest("[data-act]");if(!el)return;
+  if(el.dataset.act==="itemCond")updItem(+el.dataset.i,{condition:el.value});
+});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")cacheSave({totes:state.totes});});
+window.addEventListener("beforeunload",()=>cacheSave({totes:state.totes}));
+window.addEventListener("online",()=>{if(cfgGet().sheetId)doSync(true);});
+let _toastT;function toast(m){const el=document.getElementById("toast");el.textContent=m;el.classList.add("show");
+  clearTimeout(_toastT);_toastT=setTimeout(()=>el.classList.remove("show"),2400);}
+init();
+</script>
+</body>
+</html>
