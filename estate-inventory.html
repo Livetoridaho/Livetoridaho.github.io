@@ -247,11 +247,14 @@ async function init(){
   if(state.totes.length)toast(`${state.totes.length} tote${state.totes.length!==1?"s":""} loaded`);
 }
 function commit(opts={}){
-  render();clearTimeout(saveTimer);
+  // Only re-render when NOT a silent edit. Silent edits = active typing;
+  // re-rendering then steals focus on mobile (esp. Firefox Android) and
+  // interrupts keyboard / speech-to-text input.
+  if(opts.silent!==true)render();
+  clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
     await cacheSave({totes:state.totes});
-    if(opts.silent!==true)toast("Saved on device");
-    render();
+    if(opts.silent!==true){toast("Saved on device");render();}
     clearTimeout(syncTimer);
     syncTimer=setTimeout(()=>doSync(true),1500);
   },opts.now?0:1000);
@@ -323,6 +326,16 @@ function syncLabel(){return {off:["sync-off","Cloud sync off"],ok:["sync-ok","Sy
   busy:["sync-busy","Syncing…"],err:["sync-err","Sync error"]}[syncState];}
 function render(){
   if(!state.ready){root.innerHTML=`<div class="empty" style="margin-top:40vh">Loading…</div>`;return;}
+  // Preserve focus + cursor position across re-renders so background syncs
+  // and other render triggers don't interrupt typing on mobile.
+  const ae=document.activeElement;
+  let focusKey=null,selStart=null,selEnd=null,scrollY=null;
+  if(ae&&(ae.tagName==="INPUT"||ae.tagName==="TEXTAREA")){
+    const act=ae.getAttribute("data-act"),i=ae.getAttribute("data-i"),id=ae.id;
+    focusKey=id?("#"+id):(act?`[data-act="${act}"]${i!==null?`[data-i="${i}"]`:""}`:null);
+    try{selStart=ae.selectionStart;selEnd=ae.selectionEnd;}catch(_){}
+    scrollY=window.scrollY;
+  }
   let h="";
   if(state.screen==="detail"&&curTote())h=viewDetail();
   else if(state.screen==="search")h=viewSearch();
@@ -331,6 +344,16 @@ function render(){
   h+=tabbar();
   if(state.modal)h+=renderModal();
   root.innerHTML=h;
+  if(focusKey){
+    const el=root.querySelector(focusKey);
+    if(el){
+      try{el.focus({preventScroll:true});
+        if(selStart!==null&&(el.tagName==="INPUT"||el.tagName==="TEXTAREA"))
+          el.setSelectionRange(selStart,selEnd??selStart);
+      }catch(_){}
+      if(scrollY!==null)window.scrollTo(0,scrollY);
+    }
+  }
 }
 function tabbar(){
   const unparsed=state.totes.filter(t=>t.raw&&t.raw.trim()&&!t.items.length).length;
@@ -522,9 +545,7 @@ root.addEventListener("input",e=>{
   else if(a==="raw")updTote({raw:el.value});
   else if(a==="itemName")updItem(i,{name:el.value});
   else if(a==="itemQty")updItem(i,{qty:el.value});
-  else if(a==="searchBox"){state.searchQ=el.value;
-    const b=document.getElementById("searchBox"),p=b.selectionStart;render();
-    const n=document.getElementById("searchBox");if(n){n.focus();try{n.setSelectionRange(p,p);}catch(_){}}}
+  else if(a==="searchBox"){state.searchQ=el.value;render();}
 });
 root.addEventListener("change",e=>{
   const el=e.target.closest("[data-act]");if(!el)return;
