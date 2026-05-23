@@ -151,6 +151,12 @@ const NUM_WORDS={one:"1",two:"2",three:"3",four:"4",five:"5",six:"6",seven:"7",
 function parseRaw(raw){
   if(!raw||!raw.trim())return [];
   let txt=" "+raw.toLowerCase()+" ";
+  // Clean Samsung Voice Recorder transcript artifacts before splitting:
+  //   "Speaker 1  00:01" / "Speaker 2 1:23:45" / standalone "00:28"
+  txt=txt.replace(/\bspeaker\s*\d+\s*\d{1,2}:\d{2}(:\d{2})?/g," ");  // "Speaker N  MM:SS" or "Speaker N HH:MM:SS"
+  txt=txt.replace(/\bspeaker\s*\d+\b/g," ");                          // any leftover "Speaker N"
+  txt=txt.replace(/\b\d{1,2}:\d{2}(:\d{2})?\b/g," ");                 // bare timestamps
+  txt=txt.replace(/\s{2,}/g," ");                                     // collapse extra whitespace
   txt=txt.replace(/\bnext\b/g,"|").replace(/\bthen\b/g,"|").replace(/[\n\r;]+/g,"|");
   const chunks=txt.split("|").map(s=>s.trim()).filter(Boolean);
   const items=[];
