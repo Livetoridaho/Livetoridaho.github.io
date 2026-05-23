@@ -458,7 +458,7 @@ function viewSearch(){
       </button>`).join("")
     :`<div class="empty">No matches found</div>`);
   return `<div class="hd"><div class="lbl" style="margin-bottom:8px">Search</div>
-    <input id="searchBox" class="inp" placeholder="Items, locations, categories…" value="${esc(state.searchQ)}"/></div>
+    <input id="searchBox" data-act="searchBox" class="inp" placeholder="Items, locations, categories…" value="${esc(state.searchQ)}"/></div>
     <div class="wrap">${res}</div>`;
 }
 function viewSync(){
