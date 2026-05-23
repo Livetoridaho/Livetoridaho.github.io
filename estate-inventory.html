@@ -426,9 +426,9 @@ function viewDetail(){
   </div>
   <div style="margin:4px 16px 16px;border-top:1px solid var(--border)"></div>
   <div class="wrap" style="padding-top:0">
-    <div class="lbl">Raw Contents — dictate everything, say “next” between items</div>
+    <div class="lbl">Raw Contents — paste your Voice Recorder transcript here</div>
     <textarea class="inp" style="min-height:120px;line-height:1.6" data-act="raw"
-      placeholder="Tap the keyboard mic and talk:&#10;three picture frames good condition next box of books next old brass lamp fair next ...">${esc(t.raw||"")}</textarea>
+      placeholder="Dictate in Samsung Voice Recorder, copy the transcript, and paste it here. Say “next” between items while recording — speaker labels and timestamps are cleaned automatically on parse.">${esc(t.raw||"")}</textarea>
     <div class="note" style="margin:8px 0 12px">Pour it all in now — parse later, here or on your computer. Raw text is always kept.</div>
     <button class="btn" style="width:100%;margin-bottom:8px" data-act="parseThis">⚙ Parse This Tote${hasRaw?"":" (no raw text yet)"}</button>
     <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 10px">
